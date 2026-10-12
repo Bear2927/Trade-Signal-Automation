@@ -71,9 +71,6 @@ async function sendToChatroomWebhook(content, author, imageUrl = null) {
         url: imageUrl,
       },
       color: 0x5865F2, // Discord blue
-      footer: {
-        text: 'Image from Messenger',
-      },
     }];
   } else {
     // Text only
