@@ -15,7 +15,7 @@ from src.social.queue import get_social_queue, SocialJob
 from src.social.x_poster import post_to_twitter
 from src.social.stocktwits_poster import post_to_stocktwits
 from src.social.threads_poster import post_to_threads
-from src.social.formatter import format_for_platform
+from src.social.formatter import format_for_twitter, format_for_stocktwits, format_for_threads
 from src.common.formatter import TradeSignal
 
 logger = logging.getLogger(__name__)
@@ -142,7 +142,16 @@ class SocialScheduler:
                 continue
 
             try:
-                formatted = format_for_platform(signal, platform)
+                # Format based on platform
+                if platform == 'twitter':
+                    formatted = format_for_twitter(signal)
+                elif platform == 'stocktwits':
+                    formatted = format_for_stocktwits(signal)
+                elif platform == 'threads':
+                    formatted = format_for_threads(signal)
+                else:
+                    formatted = str(signal.raw_text)
+
                 success = await poster(formatted, signal)
                 results[platform] = success
 

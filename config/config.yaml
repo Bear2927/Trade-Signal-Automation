@@ -92,7 +92,7 @@ social:
 logging:
   level: "INFO"
   format: "json"
-  file: "./logs/app.log"
+  file: ""
   max_bytes: 10485760
   backup_count: 5
 
