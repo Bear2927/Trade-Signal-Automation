@@ -1,0 +1,39 @@
+# Environment
+.env
+.env.local
+*.pyc
+__pycache__/
+
+# Session files
+fb_session/
+fb_don_cristo_session/
+
+# Logs
+*.log
+logs/
+/tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log
+
+# Python
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Config with secrets
+.env
+config/secrets.yaml

@@ -1,0 +1,110 @@
+# StockTradingSignals Configuration
+# Copy this to config.yaml and fill in your credentials
+
+# Discord Configuration
+discord:
+  user_token: ""  # Your Discord user token (from browser dev tools)
+  target_channel_ids: []  # List of channel IDs to monitor (strings)
+  premium_webhook_url: ""  # Your premium Discord webhook URL
+
+# Facebook Messenger Configuration
+messenger:
+  target_chat_url: "https://www.facebook.com/messages/t/"  # Target chat URL
+  session_path: "./fb_session"  # Path to saved browser session
+  headless: true
+  proxy: ""  # Residential proxy: "host:port:user:pass" (optional)
+
+# Redis Configuration
+redis:
+  host: "localhost"
+  port: 6379
+  db: 0
+  password: ""  # Optional
+  max_connections: 20
+
+# Deduplication Configuration
+deduplication:
+  ttl_seconds: 30  # Time-to-live for duplicate detection
+  hash_algorithm: "md5"  # Hash algorithm for content fingerprinting
+
+# Discord Webhook Configuration (for immediate posting)
+webhook:
+  url: ""  # Same as premium_webhook_url or different
+  rate_limit_per_second: 30
+  max_retries: 3
+  retry_delay_seconds: 1
+
+# Social Media Configuration (delayed/after-hours posting)
+social:
+  # Posting schedule (cron expression, runs in ET timezone)
+  schedule_cron: "*/15 16-23,0-9 * * 1-5"  # Every 15 min 4PM-9:30AM Mon-Fri
+  weekend_schedule_cron: "*/30 * * * 0,6"  # Every 30 min weekends
+
+  # X/Twitter API v2
+  twitter:
+    enabled: false
+    api_key: ""
+    api_secret: ""
+    bearer_token: ""
+    access_token: ""
+    refresh_token: ""
+    max_chars: 280
+
+  # Stocktwits API
+  stocktwits:
+    enabled: false
+    client_id: ""
+    client_secret: ""
+    access_token: ""
+    max_chars: 2000
+
+  # Threads (Instagram Graph API)
+  threads:
+    enabled: false
+    app_id: ""
+    app_secret: ""
+    user_access_token: ""
+    max_chars: 500
+
+  # Reddit API
+  reddit:
+    enabled: false
+    client_id: ""
+    client_secret: ""
+    refresh_token: ""
+    target_subreddits: ["wallstreetbets", "stocks", "options"]
+
+  # Telegram Bot
+  telegram:
+    enabled: false
+    bot_token: ""
+    chat_ids: []  # List of chat IDs or @channelnames
+
+  # LinkedIn
+  linkedin:
+    enabled: false
+    client_id: ""
+    client_secret: ""
+    access_token: ""
+
+  # Email Digest (SendGrid)
+  email:
+    enabled: false
+    sendgrid_api_key: ""
+    from_email: ""
+    from_name: "StockTradingSignals"
+    subscriber_list_id: ""  # SendGrid contact list ID
+    schedule_cron: "0 6 * * 1-5"  # 6 AM ET weekdays
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "json"  # json or text
+  file: "./logs/app.log"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+
+# Monitoring
+monitoring:
+  prometheus_port: 9090
+  health_check_port: 8080

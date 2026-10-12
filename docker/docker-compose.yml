@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: stocksignals-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: stocksignals-app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHONPATH=/app
+    env_file:
+      - ../.env
+    volumes:
+      - ../config:/app/config:ro
+      - ../logs:/app/logs
+      - ../fb_session:/app/fb_session
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: stocksignals-scheduler
+    command: python -m src.social.scheduler
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHONPATH=/app
+    env_file:
+      - ../.env
+    volumes:
+      - ../config:/app/config:ro
+      - ../logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  messenger:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: stocksignals-messenger
+    command: node src/messenger/scraper.js
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHONPATH=/app
+    env_file:
+      - ../.env
+    volumes:
+      - ../config:/app/config:ro
+      - ../fb_session:/app/fb_session
+      - ../logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: stocksignals-network

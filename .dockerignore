@@ -1,0 +1,12 @@
+fb_session/
+logs/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+.venv/
+venv/
+.env
+*.log
+.DS_Store

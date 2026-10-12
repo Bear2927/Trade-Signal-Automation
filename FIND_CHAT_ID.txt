@@ -1,0 +1,97 @@
+═══════════════════════════════════════════════════════════════════════════
+                    HOW TO FIND YOUR MESSENGER CHAT ID
+═══════════════════════════════════════════════════════════════════════════
+
+STEP 1: Open Facebook Messenger
+════════════════════════════════════════════════════════════════════════════
+
+Go to: https://www.facebook.com/messages/
+
+
+STEP 2: Click on the Chat You Want to Scrape
+════════════════════════════════════════════════════════════════════════════
+
+[Messenger Sidebar]
+├─ Your Friends
+├─ Group 1
+├─ Group 2
+└─ [TARGET GROUP] ← CLICK HERE
+    └─ Chat Window Opens
+
+
+STEP 3: Look at the URL Bar
+════════════════════════════════════════════════════════════════════════════
+
+URL: https://www.facebook.com/messages/t/1929174430523823/
+                                              ↑
+                                    COPY THIS ID
+
+
+STEP 4: Extract and Use
+════════════════════════════════════════════════════════════════════════════
+
+YOUR_CHAT_ID = 1929174430523823
+
+Use in URL: https://www.facebook.com/messages/t/1929174430523823
+
+
+═══════════════════════════════════════════════════════════════════════════
+                            UPDATE YOUR CONFIG
+═══════════════════════════════════════════════════════════════════════════
+
+METHOD 1: Edit .env File
+────────────────────────────────────────────────────────────────────────────
+
+cd /home/bear2927/StockTradingSignals
+nano .env
+
+Find this line:
+    MESSENGER__TARGET_CHAT_URL=https://www.facebook.com/messages/t/1929174430523823
+
+Change to:
+    MESSENGER__TARGET_CHAT_URL=https://www.facebook.com/messages/t/YOUR_CHAT_ID
+
+Save: Press Ctrl+X, then Y, then Enter
+
+
+METHOD 2: Set Environment Variable (Temporary)
+────────────────────────────────────────────────────────────────────────────
+
+export MESSENGER_TARGET_CHAT_URL="https://www.facebook.com/messages/t/YOUR_CHAT_ID"
+node src/messenger/scraper.js
+
+
+═══════════════════════════════════════════════════════════════════════════
+                              TEST CONNECTION
+═══════════════════════════════════════════════════════════════════════════
+
+1. Start Redis:
+   scripts/start_redis.sh start
+
+2. Run Scraper:
+   export REDIS_HOST=localhost REDIS_PORT=6379
+   node src/messenger/scraper.js
+
+3. Verify Output:
+   Should see: "Found message container with selector: ..."
+
+4. Post Test Message in Messenger:
+   $AAPL long entry 150 target 160
+
+5. Check Scraper Logs:
+   Should see: "New signal detected: AAPL - ..."
+
+═══════════════════════════════════════════════════════════════════════════
+                          CURRENT CONFIGURATION
+═══════════════════════════════════════════════════════════════════════════
+
+Your .env currently has:
+  MESSENGER__TARGET_CHAT_URL=https://www.facebook.com/messages/t/1929174430523823
+
+This is connected to chat ID: 1929174430523823
+
+Is this the chat you want? 
+  YES → You're all set, just run: node src/messenger/scraper.js
+  NO  → Follow the steps above to update it
+
+═══════════════════════════════════════════════════════════════════════════

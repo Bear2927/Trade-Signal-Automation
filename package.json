@@ -1,0 +1,25 @@
+{
+  "name": "stock-trading-signals-messenger",
+  "version": "1.0.0",
+  "description": "Facebook Messenger scraper using Playwright with stealth",
+  "main": "src/messenger/scraper.js",
+  "scripts": {
+    "start": "node src/messenger/scraper.js",
+    "setup": "node scripts/setup_fb_session.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0",
+    "playwright-extra": "^4.3.0",
+    "puppeteer-extra-plugin-stealth": "^2.11.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.0",
+    "ioredis": "^5.3.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

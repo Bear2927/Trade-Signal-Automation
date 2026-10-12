@@ -1,0 +1,102 @@
+# StockTradingSignals Configuration
+# Fill in your credentials below
+
+# Discord Configuration
+discord:
+  user_token: "YOUR_DISCORD_USER_TOKEN_HERE"
+  target_channel_ids: ["1195875428234174614"]
+  premium_webhook_url: "YOUR_DISCORD_WEBHOOK_URL_HERE"
+
+# Facebook Messenger Configuration
+messenger:
+  target_chat_url: "https://www.facebook.com/messages/t/1929174430523823"
+  session_path: "./fb_session"
+  headless: true
+  proxy: ""
+
+# Redis Configuration
+redis:
+  host: "localhost"
+  port: 6379
+  db: 0
+  password: ""
+  max_connections: 20
+
+# Deduplication Configuration
+deduplication:
+  ttl_seconds: 30
+  hash_algorithm: "md5"
+
+# Discord Webhook Configuration
+webhook:
+  url: ""
+  rate_limit_per_second: 30
+  max_retries: 3
+  retry_delay_seconds: 1
+
+# Social Media Configuration
+social:
+  schedule_cron: "*/15 16-23,0-9 * * 1-5"
+  weekend_schedule_cron: "*/30 * * * 0,6"
+
+  twitter:
+    enabled: false
+    api_key: ""
+    api_secret: ""
+    bearer_token: ""
+    access_token: ""
+    refresh_token: ""
+    max_chars: 280
+
+  stocktwits:
+    enabled: false
+    client_id: ""
+    client_secret: ""
+    access_token: ""
+    max_chars: 2000
+
+  threads:
+    enabled: false
+    app_id: ""
+    app_secret: ""
+    user_access_token: ""
+    max_chars: 500
+
+  reddit:
+    enabled: false
+    client_id: ""
+    client_secret: ""
+    refresh_token: ""
+    target_subreddits: ["wallstreetbets", "stocks", "options"]
+
+  telegram:
+    enabled: false
+    bot_token: ""
+    chat_ids: []
+
+  linkedin:
+    enabled: false
+    client_id: ""
+    client_secret: ""
+    access_token: ""
+
+  email:
+    enabled: false
+    sendgrid_api_key: ""
+    from_email: ""
+    from_name: "StockTradingSignals"
+    subscriber_list_id: ""
+    schedule_cron: "0 6 * * 1-5"
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "json"
+  file: "./logs/app.log"
+  max_bytes: 10485760
+  backup_count: 5
+
+# Monitoring
+monitoring:
+  prometheus_port: 9090
+  health_check_port: 8080
