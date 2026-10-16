@@ -18,6 +18,7 @@ class StocktwitsPoster:
     def __init__(self):
         self._settings = get_settings()
         self._access_token: Optional[str] = None
+        self._relay_url: Optional[str] = None
         self._session: Optional[aiohttp.ClientSession] = None
         self._initialized = False
 
@@ -31,13 +32,28 @@ class StocktwitsPoster:
             logger.info("Stocktwits posting disabled")
             return False
 
+        timeout = aiohttp.ClientTimeout(total=30)
+
+        # Relay mode: hand the post to an authorized integration instead of
+        # calling the Enterprise-only API directly. No Stocktwits credential
+        # lives here; the integration holds the OAuth connection.
+        if st.relay_webhook_url:
+            self._relay_url = st.relay_webhook_url
+            self._session = aiohttp.ClientSession(
+                timeout=timeout, headers={"Content-Type": "application/json"}
+            )
+            self._initialized = True
+            logger.info("Stocktwits poster initialized in relay mode")
+            return True
+
         if not st.access_token:
-            logger.warning("Stocktwits access token not configured")
+            logger.warning(
+                "Stocktwits needs either relay_webhook_url or access_token"
+            )
             return False
 
         self._access_token = st.access_token
 
-        timeout = aiohttp.ClientTimeout(total=30)
         self._session = aiohttp.ClientSession(
             timeout=timeout,
             headers={
@@ -79,6 +95,22 @@ class StocktwitsPoster:
             return False
 
         try:
+            if self._relay_url:
+                # The integration's "Create Post" action takes the body; ticker
+                # is passed alongside so the Zap can build a cashtag if wanted.
+                async with self._session.post(
+                    self._relay_url,
+                    json={"body": text, "ticker": signal.ticker or ""},
+                ) as resp:
+                    if 200 <= resp.status < 300:
+                        logger.info("Stocktwits post relayed")
+                        return True
+                    logger.error(
+                        f"Stocktwits relay failed: {resp.status} - "
+                        f"{(await resp.text())[:200]}"
+                    )
+                    return False
+
             # Stocktwits expects symbols with $ prefix for cashtags
             payload = {
                 "body": text,

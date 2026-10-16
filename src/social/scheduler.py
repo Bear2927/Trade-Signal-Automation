@@ -11,7 +11,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from src.common.config import get_settings
-from src.social.queue import get_social_queue, SocialJob
+from src.social.queue import get_social_queue, get_enabled_platforms, SocialJob
 from src.social.x_poster import post_to_twitter
 from src.social.stocktwits_poster import post_to_stocktwits
 from src.social.threads_poster import post_to_threads
@@ -131,10 +131,39 @@ class SocialScheduler:
     async def _process_job(self, job: SocialJob) -> None:
         """Process a single social media job across all platforms."""
         # Reconstruct TradeSignal from dict
-        signal = TradeSignal(**job.signal)
+        signal = TradeSignal.from_dict(job.signal)
+        # job.timestamp is when the alert arrived from Discord/Messenger.
+        if signal.timestamp is None:
+            signal.timestamp = job.timestamp
+
+        # Neither producer fills in `ticker`: the JS scraper puts it inside its
+        # own `trades` list (which from_dict drops) and the Discord gateway
+        # builds the signal straight from raw text. Posters pass this field to
+        # the relay, so without it every payload carried ticker="".
+        if not signal.ticker:
+            trades = (job.signal or {}).get("trades") or []
+            first = trades[0].get("ticker") if trades and isinstance(trades[0], dict) else None
+            if first:
+                signal.ticker = first
+            else:
+                # Contract-anchored: SignalFormatter.parse() returns the first
+                # non-blocklisted <=5-char word, which yields "OUT" for
+                # "all out SPY 778C" and "NICE" for chatter. An empty ticker is
+                # better than one that points the post at the wrong symbol.
+                from src.common.webhook import extract_ticker
+                signal.ticker = extract_ticker(signal.raw_text)
+
+        # A job can arrive with no platforms (the JS scraper used to hardcode an
+        # empty list). Falling through would leave `results` empty, and all({})
+        # is True -- the job would be logged as posted without reaching anything.
+        platforms = job.platforms or get_enabled_platforms()
+        if not platforms:
+            queue = await get_social_queue()
+            await queue.move_to_dead_letter(job, "No social platforms enabled")
+            return
 
         results = {}
-        for platform in job.platforms:
+        for platform in platforms:
             poster = self._platform_posters.get(platform)
             if not poster:
                 logger.warning(f"No poster for platform: {platform}")

@@ -2,6 +2,13 @@
 
 from datetime import datetime
 from src.common.formatter import TradeSignal
+
+
+def _signal_time(signal: TradeSignal) -> datetime:
+    """When the alert was posted upstream, falling back to now."""
+    if signal.timestamp:
+        return datetime.fromtimestamp(signal.timestamp)
+    return datetime.now()
 from src.social.trade_summarizer import TradeSummarizer
 from src.social.social_poster_formatter import SocialMediaFormatter
 
@@ -11,21 +18,27 @@ def format_for_twitter(signal: TradeSignal) -> str:
     # Use Discord timestamp formatter for Messenger trades
     if signal.source == "Trading Signal" and "s/l" in signal.raw_text:
         return SocialMediaFormatter.format_messenger_trade_for_social(
-            signal.raw_text, datetime.now(), 'twitter'
+            signal.raw_text, _signal_time(signal), 'twitter'
         )
     # Use trade summarizer for other sources
     return TradeSummarizer.format_for_social_media(signal.raw_text, 'twitter')
 
 
 def format_for_stocktwits(signal: TradeSignal) -> str:
-    """Format signal for Stocktwits with Discord timestamp."""
-    # Use Discord timestamp formatter for Messenger trades
-    if signal.source == "Trading Signal" and "s/l" in signal.raw_text:
+    """Format signal for Stocktwits, within the platform's posting limit."""
+    from src.common.webhook import classify_message
+    from src.social.social_poster_formatter import STOCKTWITS_POST_LIMIT
+
+    # Any recognisable trade goes through the length-aware formatter. Keying
+    # off "s/l" alone missed alerts written without a stop, e.g.
+    # "MS OCT23 200C earnings".
+    if classify_message(signal.raw_text) == "entry":
         return SocialMediaFormatter.format_messenger_trade_for_social(
-            signal.raw_text, datetime.now(), 'stocktwits'
+            signal.raw_text, _signal_time(signal), 'stocktwits'
         )
-    # Use trade summarizer for other sources
-    return TradeSummarizer.format_for_social_media(signal.raw_text, 'stocktwits')
+    # Other sources still need capping; the platform truncates silently.
+    return TradeSummarizer.format_for_social_media(
+        signal.raw_text, 'stocktwits')[:STOCKTWITS_POST_LIMIT]
 
 
 def format_for_threads(signal: TradeSignal) -> str:
@@ -33,7 +46,7 @@ def format_for_threads(signal: TradeSignal) -> str:
     # Use Discord timestamp formatter for Messenger trades
     if signal.source == "Trading Signal" and "s/l" in signal.raw_text:
         return SocialMediaFormatter.format_messenger_trade_for_social(
-            signal.raw_text, datetime.now(), 'threads'
+            signal.raw_text, _signal_time(signal), 'threads'
         )
     # Use trade summarizer for other sources
     return TradeSummarizer.format_for_social_media(signal.raw_text, 'threads')

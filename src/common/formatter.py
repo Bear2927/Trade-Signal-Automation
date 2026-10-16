@@ -20,6 +20,19 @@ class TradeSignal:
     source: str = ""
     author: str = ""
     channel: str = ""
+    # When the signal was posted in Discord/Messenger -- not when it was later
+    # relayed to social, which happens hours afterwards by design.
+    timestamp: Optional[float] = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "TradeSignal":
+        """Build from a queue payload, ignoring producer-specific extras.
+
+        The JS scraper adds a `trades` list that has no field here, which would
+        otherwise raise TypeError for every Messenger job.
+        """
+        fields = cls.__dataclass_fields__
+        return cls(**{k: v for k, v in data.items() if k in fields})
 
 
 class SignalFormatter:

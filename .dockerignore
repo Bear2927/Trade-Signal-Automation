@@ -10,3 +10,16 @@ venv/
 .env
 *.log
 .DS_Store
+# Browser session profiles: large, machine-local, and never used at build
+# time (the image creates its own). The .bak copies are also owned by a
+# different uid, which fails the build context with "permission denied".
+fb_session.bak.*/
+fb_don_cristo_session/
+sessions/
+
+# Never bake secrets into the image; compose injects .env.local at runtime.
+.env.local
+
+# Dependencies are installed inside the image by npm ci / pip.
+node_modules/
+.git/

@@ -28,7 +28,8 @@ class TwitterPoster:
             logger.info("Twitter posting disabled")
             return False
 
-        if not all([twitter.api_key, twitter.api_secret, twitter.access_token]):
+        if not all([twitter.api_key, twitter.api_secret, twitter.access_token,
+                    twitter.access_token_secret]):
             logger.warning("Twitter credentials incomplete")
             return False
 
@@ -37,7 +38,7 @@ class TwitterPoster:
                 consumer_key=twitter.api_key,
                 consumer_secret=twitter.api_secret,
                 access_token=twitter.access_token,
-                access_token_secret=twitter.api_secret,  # For OAuth 1.0a user context
+                access_token_secret=twitter.access_token_secret,
                 bearer_token=twitter.bearer_token,
                 wait_on_rate_limit=True,
             )

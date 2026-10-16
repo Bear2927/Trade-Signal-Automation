@@ -9,8 +9,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DiscordSettings(BaseSettings):
+    bot_token: str = ""
     user_token: str = ""
     target_channel_ids: List[str] = Field(default_factory=list)
+    premium_channel_id: str = ""
+    chat_channel_id: str = ""
     premium_webhook_url: str = ""
 
 
@@ -19,9 +22,18 @@ class MessengerSettings(BaseSettings):
     session_path: str = "./fb_session"
     headless: bool = True
     proxy: str = ""
+    # Authors whose messages are forwarded, and the threads to watch. One
+    # scraper process is launched per entry in `chats`.
+    authors: List[str] = Field(default_factory=lambda: ["Don Cristo", "Macro CEO"])
+    chats: List[dict] = Field(default_factory=list)
 
 
 class RedisSettings(BaseSettings):
+    # Prefixed so the host can come from REDIS_HOST. In Docker the service is
+    # reachable as "redis", on the host as "localhost", so config.yaml leaves
+    # it blank (drop_blanks strips it) and lets the environment decide.
+    model_config = SettingsConfigDict(env_prefix="REDIS_")
+
     host: str = "localhost"
     port: int = 6379
     db: int = 0
@@ -36,23 +48,41 @@ class DeduplicationSettings(BaseSettings):
 
 class WebhookSettings(BaseSettings):
     url: str = ""
+    # Non-trade messages are routed here instead of the trade-signals channel.
+    chat_url: str = ""
     rate_limit_per_second: int = 30
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
 
 
 class TwitterSettings(BaseSettings):
+    # Prefixed so credentials can live in .env.local (gitignored)
+    # instead of config.yaml, which is tracked in git.
+    model_config = SettingsConfigDict(env_prefix="TWITTER_")
+
     enabled: bool = False
     api_key: str = ""
     api_secret: str = ""
     bearer_token: str = ""
     access_token: str = ""
+    # Distinct from api_secret: OAuth 1.0a user context needs the access
+    # token's own secret, which the consumer secret cannot stand in for.
+    access_token_secret: str = ""
     refresh_token: str = ""
     max_chars: int = 280
 
 
 class StocktwitsSettings(BaseSettings):
+    # Prefixed so credentials can live in .env.local (gitignored)
+    # instead of config.yaml, which is tracked in git.
+    model_config = SettingsConfigDict(env_prefix="STOCKTWITS_")
+
     enabled: bool = False
+    # Stocktwits gates direct API access behind an Enterprise plan, so posting
+    # normally goes through an authorized integration (a Zapier Catch Hook
+    # feeding its official OAuth-connected "Create Post" action). When this is
+    # set it takes precedence and no access_token is needed.
+    relay_webhook_url: str = ""
     client_id: str = ""
     client_secret: str = ""
     access_token: str = ""
@@ -60,6 +90,10 @@ class StocktwitsSettings(BaseSettings):
 
 
 class ThreadsSettings(BaseSettings):
+    # Prefixed so credentials can live in .env.local (gitignored)
+    # instead of config.yaml, which is tracked in git.
+    model_config = SettingsConfigDict(env_prefix="THREADS_")
+
     enabled: bool = False
     app_id: str = ""
     app_secret: str = ""
@@ -112,7 +146,7 @@ class SocialSettings(BaseSettings):
 class LoggingSettings(BaseSettings):
     level: str = "INFO"
     format: str = "json"
-    file: str = "./logs/app.log"
+    file: str = "/tmp/stock_app.log"
     max_bytes: int = 10485760
     backup_count: int = 5
 
@@ -164,6 +198,17 @@ def load_config_from_yaml(config_path: str = "config/config.yaml") -> Settings:
 
     with open(path, "r") as f:
         data = yaml.safe_load(f) or {}
+
+    # Empty strings in YAML are treated as "unset" rather than as an explicit
+    # value. Passing them through would override environment variables, which
+    # would force secrets to live in this file -- and it is tracked in git.
+    def drop_blanks(section):
+        if isinstance(section, dict):
+            return {k: drop_blanks(v) for k, v in section.items()
+                    if not (isinstance(v, str) and v.strip() == "")}
+        return section
+
+    data = drop_blanks(data)
 
     # Create nested settings objects from YAML sections
     kwargs = {}

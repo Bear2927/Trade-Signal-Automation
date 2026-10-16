@@ -31,6 +31,18 @@ class SocialJob:
             self.created_at = time.time()
 
 
+def get_enabled_platforms(settings=None) -> List[str]:
+    """Platforms switched on in config, in a fixed order.
+
+    Shared by the producer (enqueue) and the consumer (scheduler) so a job that
+    arrives without a platform list -- e.g. from the JS Messenger scraper -- can
+    still be resolved instead of being silently treated as "nothing to do".
+    """
+    social = (settings or get_settings()).social
+    names = ["twitter", "stocktwits", "threads", "reddit", "telegram", "linkedin", "email"]
+    return [n for n in names if getattr(social, n).enabled]
+
+
 class SocialQueue:
     """Redis-backed priority queue for social media jobs."""
 
@@ -72,16 +84,7 @@ class SocialQueue:
 
     def _get_enabled_platforms(self) -> List[str]:
         """Get list of enabled social platforms from config."""
-        social = self._settings.social
-        platforms = []
-        if social.twitter.enabled: platforms.append("twitter")
-        if social.stocktwits.enabled: platforms.append("stocktwits")
-        if social.threads.enabled: platforms.append("threads")
-        if social.reddit.enabled: platforms.append("reddit")
-        if social.telegram.enabled: platforms.append("telegram")
-        if social.linkedin.enabled: platforms.append("linkedin")
-        if social.email.enabled: platforms.append("email")
-        return platforms
+        return get_enabled_platforms(self._settings)
 
     async def dequeue(self, count: int = 10) -> List[SocialJob]:
         """Get highest priority jobs from queue."""

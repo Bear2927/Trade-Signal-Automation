@@ -1,7 +1,37 @@
 """Formatter for social media posts with Discord timestamp and CTA."""
 
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from src.common.formatter import TradeSignal
+
+
+# Enforced by the posting API regardless of the limit the web app advertises.
+STOCKTWITS_POST_LIMIT = 140
+
+# Posts are labelled "ET", so they must actually be rendered in Eastern time.
+# This host runs in Central, so formatting local time and calling it ET was
+# putting every alert an hour early.
+EASTERN = ZoneInfo("America/New_York")
+
+
+def _as_eastern(dt):
+    if dt is None:
+        return datetime.now(EASTERN)
+    if dt.tzinfo is None:
+        dt = dt.astimezone()
+    return dt.astimezone(EASTERN)
+
+# The footer is reserved rather than appended: the body is trimmed to whatever
+# space is left over, so a long alert can never push the CTA or tags off the
+# end the way the original full-length format did.
+STOCKTWITS_CTA = "🔗 Alerts first - Discord in bio"
+STOCKTWITS_TAGS = "#options #trading #stocks"
+STOCKTWITS_FOOTER = f"{STOCKTWITS_CTA}\n{STOCKTWITS_TAGS}"
+
+
+def _cashtag(ticker):
+    """$-prefix a ticker so Stocktwits and X link it to the symbol page."""
+    return f"${ticker}" if ticker else "Trade"
 
 
 class SocialMediaFormatter:
@@ -28,8 +58,8 @@ class SocialMediaFormatter:
             discord_post_time = datetime.now()
 
         # Format the timestamp
-        time_str = discord_post_time.strftime("%I:%M %p ET")  # 02:30 PM ET
-        date_str = discord_post_time.strftime("%b %d, %Y")     # Oct 12, 2026
+        time_str = _as_eastern(discord_post_time).strftime("%I:%M %p ET")
+        date_str = _as_eastern(discord_post_time).strftime("%b %d, %Y")
 
         # Build the post
         if platform.lower() == "stocktwits":
@@ -53,7 +83,7 @@ class SocialMediaFormatter:
         post = (
             f"📊 TRADE ALERT\n\n"
             f"{trade_text}\n\n"
-            f"⏰ Posted to Discord: {time_str} ET\n"
+            f"⏰ Posted to Discord: {time_str}\n"
             f"📅 {date_str}\n\n"
             f"🔥 Join our Discord community for REAL-TIME trade alerts!\n"
             f"👉 Link in BIO\n\n"
@@ -69,7 +99,7 @@ class SocialMediaFormatter:
 
         post = (
             f"📊 {trade_line}\n"
-            f"⏰ Discord: {time_str} ET\n"
+            f"⏰ Discord: {time_str}\n"
             f"🔥 Join us! Link in BIO 🔗\n"
             f"#trading #stocks"
         )
@@ -87,7 +117,7 @@ class SocialMediaFormatter:
         post = (
             f"📊 Trade Alert\n\n"
             f"{trade_text}\n\n"
-            f"⏰ Posted to our Discord at {time_str} ET\n"
+            f"⏰ Posted to our Discord at {time_str}\n"
             f"📅 {date_str}\n\n"
             f"🔥 Want real-time trade alerts like this?\n"
             f"👉 Join our Discord community\n"
@@ -115,10 +145,13 @@ class SocialMediaFormatter:
 
         parsed = MessengerTradeParser.parse_message(trade_text)
 
+        from src.common.webhook import extract_ticker
+        fallback_ticker = extract_ticker(trade_text)
+
         if parsed and parsed.is_valid:
             # Build detailed trade info
             trade_info = (
-                f"📊 {parsed.ticker} {parsed.expiration} {parsed.strike}{parsed.option_type}\n"
+                f"📊 ${parsed.ticker} {parsed.expiration} {parsed.strike}{parsed.option_type}\n"
                 f"Entry: ${parsed.entry_price} | Stop: ${parsed.stop_loss} | Target: ${parsed.profit_target}"
             )
             if parsed.notes:
@@ -127,31 +160,54 @@ class SocialMediaFormatter:
             trade_info = trade_text
 
         # Add timestamp and CTA
-        time_str = discord_timestamp.strftime("%I:%M %p ET")
-        date_str = discord_timestamp.strftime("%b %d, %Y")
+        time_str = _as_eastern(discord_timestamp).strftime("%I:%M %p ET")
+        date_str = _as_eastern(discord_timestamp).strftime("%b %d, %Y")
 
         if platform.lower() == "stocktwits":
-            return (
-                f"⚡ LIVE TRADE ALERT ⚡\n\n"
-                f"{trade_info}\n\n"
-                f"🕐 Called in Discord at {time_str} ET\n"
-                f"📅 {date_str}\n\n"
-                f"Get alerts BEFORE they hit social media!\n"
-                f"🔗 Join our Discord - Link in BIO\n\n"
-                f"#trading #stocks #options #alerts"
-            )
+            # Observed behaviour: the API posting path silently drops anything
+            # past ~140 chars, even though the web app documents a 1,000-char
+            # limit. Everything here is built to fit inside that budget, most
+            # important first, so nothing valuable is the thing that gets cut.
+            lines = []
+            if parsed and parsed.is_valid:
+                lines.append(
+                    f"⚡ ${parsed.ticker} {parsed.expiration} "
+                    f"{parsed.strike}{parsed.option_type}"
+                )
+                nums = f"Entry {parsed.entry_price} | SL {parsed.stop_loss}"
+                if parsed.profit_target:
+                    nums += f" | PT {parsed.profit_target}"
+                    try:
+                        pct = ((float(parsed.profit_target) - float(parsed.entry_price))
+                               / float(parsed.entry_price) * 100)
+                        nums += f" (+{pct:.0f}%)"
+                    except (TypeError, ValueError, ZeroDivisionError):
+                        pass
+                lines.append(nums)
+            else:
+                # No structured parse: at least cashtag the leading ticker so
+                # the post still lands on the symbol page.
+                text = trade_info
+                if fallback_ticker and text.upper().startswith(fallback_ticker):
+                    text = "$" + text
+                lines.append(text)
+            lines.append(f"🕐 {time_str}")
+
+            budget = STOCKTWITS_POST_LIMIT - len(STOCKTWITS_FOOTER) - 1
+            body = "\n".join(lines)[:budget].rstrip()
+            return f"{body}\n{STOCKTWITS_FOOTER}"
         elif platform.lower() == "twitter":
             return (
-                f"⚡ {parsed.ticker if parsed else 'Trade'} Alert!\n"
-                f"{trade_info[:100]}...\n"
-                f"🕐 {time_str} ET\n"
+                f"⚡ {_cashtag(parsed.ticker if parsed and parsed.is_valid else fallback_ticker)} Alert!\n"
+                f"{trade_info if len(trade_info) <= 100 else trade_info[:97] + chr(46)*3}\n"
+                f"🕐 {time_str}\n"
                 f"🔗 Discord link in BIO"
             )
         elif platform.lower() == "threads":
             return (
                 f"⚡ LIVE TRADE ALERT ⚡\n\n"
                 f"{trade_info}\n\n"
-                f"This was called in our Discord at {time_str} ET\n"
+                f"This was called in our Discord at {time_str}\n"
                 f"📅 {date_str}\n\n"
                 f"Want REAL-TIME alerts before they hit social?\n"
                 f"Join our Discord community 🔗\n"

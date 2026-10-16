@@ -26,7 +26,7 @@ services:
       - REDIS_PORT=6379
       - PYTHONPATH=/app
     env_file:
-      - ../.env
+      - ../.env.local
     volumes:
       - ../config:/app/config:ro
       - ../logs:/app/logs
@@ -41,25 +41,12 @@ services:
           memory: 2G
           cpus: '2'
 
-  scheduler:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    container_name: stocksignals-scheduler
-    command: python -m src.social.scheduler
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - PYTHONPATH=/app
-    env_file:
-      - ../.env
-    volumes:
-      - ../config:/app/config:ro
-      - ../logs:/app/logs
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
+  # NOTE: the former "scheduler" service ran `python -m src.social.scheduler`,
+  # but that module has no __main__ block, so it exited 0 immediately and the
+  # container restart-looped forever. The social scheduler actually runs
+  # in-process inside the app container (main.py calls start_scheduler()), so
+  # this service was redundant. Do not re-add it without a __main__ entrypoint,
+  # and note that two schedulers would drain the same queue and double-post.
 
   messenger:
     build:
@@ -67,12 +54,17 @@ services:
       dockerfile: docker/Dockerfile
     container_name: stocksignals-messenger
     command: node src/messenger/scraper.js
+    # The fb_session profile is created on the host by scripts/setup_fb_session.py
+    # as uid 1000, and Chromium needs to write to it. The image's appuser is uid
+    # 996, so without this the browser fails to launch the persistent context.
+    user: "1000:1000"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - PYTHONPATH=/app
+      - HOME=/home/appuser
     env_file:
-      - ../.env
+      - ../.env.local
     volumes:
       - ../config:/app/config:ro
       - ../fb_session:/app/fb_session

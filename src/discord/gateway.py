@@ -285,11 +285,11 @@ class DiscordGateway:
         from src.social.queue import get_social_queue
 
         queue = await get_social_queue()
-        await queue.enqueue({
-            "signal": signal.__dict__,
-            "source": "discord",
-            "timestamp": time.time(),
-        })
+        await queue.enqueue(
+            signal=signal.__dict__,
+            source="discord",
+            timestamp=time.time(),
+        )
 
     async def _heartbeat_loop(self) -> None:
         """Send periodic heartbeats to keep connection alive."""

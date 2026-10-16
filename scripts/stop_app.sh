@@ -1,35 +1,33 @@
 #!/bin/bash
 # Stop StockTradingSignals application
 
-LOG_DIR="/home/bear2927/StockTradingSignals/logs"
-
-# Create log directory if it doesn't exist
-mkdir -p "$LOG_DIR" 2>/dev/null || LOG_DIR="/tmp/stock-trading-signals-logs"
-mkdir -p "$LOG_DIR" 2>/dev/null
+LOG_FILE="/tmp/stock_trading_shutdown.log"
 
 # Stop Python application
-if pgrep -f "python -m src.main" > /dev/null; then
-    pkill -f "python -m src.main"
-    echo "$(date): Stopped Python application" >> "$LOG_DIR/scheduler.log"
+if pgrep -u "$(id -u)" -f "python -m src.main" > /dev/null; then
+    pkill -u "$(id -u)" -f "python -m src.main"
+    echo "$(date): Stopped Python application" >> "$LOG_FILE"
     sleep 2
 else
-    echo "$(date): Python application not running" >> "$LOG_DIR/scheduler.log"
+    echo "$(date): Python application not running" >> "$LOG_FILE"
 fi
 
-# Stop Node.js scraper (trade signals)
-if pgrep -f "node src/messenger/scraper.js" > /dev/null; then
-    pkill -f "node src/messenger/scraper.js"
-    echo "$(date): Stopped Node.js scraper" >> "$LOG_DIR/scheduler.log"
+# Stop every Messenger scraper instance. The pattern matches all of them
+# because each runs as: node src/messenger/scraper.js --chat <id> --session <dir>
+if pgrep -u "$(id -u)" -f "src/messenger/scraper.js" > /dev/null; then
+    COUNT=$(pgrep -u "$(id -u)" -cf "src/messenger/scraper.js")
+    pkill -u "$(id -u)" -f "src/messenger/scraper.js"
+    echo "$(date): Stopped $COUNT Messenger scraper(s)" >> "$LOG_FILE"
     sleep 2
 else
-    echo "$(date): Node.js scraper not running" >> "$LOG_DIR/scheduler.log"
+    echo "$(date): No Messenger scrapers running" >> "$LOG_FILE"
 fi
 
-# Stop Don Cristo scraper
-if pgrep -f "node src/messenger/don_cristo_scraper.js" > /dev/null; then
-    pkill -f "node src/messenger/don_cristo_scraper.js"
-    echo "$(date): Stopped Don Cristo scraper" >> "$LOG_DIR/scheduler.log"
+# Legacy single-purpose scraper, superseded by scraper.js --chat
+if pgrep -u "$(id -u)" -f "src/messenger/don_cristo_scraper.js" > /dev/null; then
+    pkill -u "$(id -u)" -f "src/messenger/don_cristo_scraper.js"
+    echo "$(date): Stopped legacy don_cristo scraper" >> "$LOG_FILE"
     sleep 2
-else
-    echo "$(date): Don Cristo scraper not running" >> "$LOG_DIR/scheduler.log"
 fi
+
+echo "$(date): StockTradingSignals stopped" >> "$LOG_FILE"

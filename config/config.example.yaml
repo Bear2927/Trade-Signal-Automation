@@ -6,6 +6,8 @@ discord:
   user_token: ""  # Your Discord user token (from browser dev tools)
   target_channel_ids: []  # List of channel IDs to monitor (strings)
   premium_webhook_url: ""  # Your premium Discord webhook URL
+  premium_channel_id: ""  # Channel ID that trade signals are posted to
+  chat_channel_id: ""  # Channel ID for non-trade chatter (see webhook.chat_url)
 
 # Facebook Messenger Configuration
 messenger:
@@ -13,6 +15,13 @@ messenger:
   session_path: "./fb_session"  # Path to saved browser session
   headless: true
   proxy: ""  # Residential proxy: "host:port:user:pass" (optional)
+  authors: ["Don Cristo", "Macro CEO"]  # Only these senders are forwarded
+  # One scraper process is launched per entry. Each needs its own session dir:
+  # Chrome locks a profile to a single process.
+  chats: []
+  #  - id: "1234567890"
+  #    label: "Alerts Only"
+  #    session: "./fb_session"
 
 # Redis Configuration
 redis:
@@ -30,6 +39,7 @@ deduplication:
 # Discord Webhook Configuration (for immediate posting)
 webhook:
   url: ""  # Same as premium_webhook_url or different
+  chat_url: ""  # Non-trade messages go here; falls back to url if empty
   rate_limit_per_second: 30
   max_retries: 3
   retry_delay_seconds: 1

@@ -59,22 +59,18 @@ async function sendToChatroomWebhook(content, author, imageUrl = null) {
   }
 
   const payload = {
-    username: author,
-    avatar_url: '',
+    embeds: [{
+      title: "Trade Signal",
+      description: content.substring(0, 4096),
+      color: 0x00FF00,
+    }],
   };
 
-  // If there's an image, create an embed with the message and image
+  // If there's an image, add it to the embed
   if (imageUrl) {
-    payload.embeds = [{
-      description: content.substring(0, 2000),
-      image: {
-        url: imageUrl,
-      },
-      color: 0x5865F2, // Discord blue
-    }];
-  } else {
-    // Text only
-    payload.content = content.substring(0, 2000);
+    payload.embeds[0].image = {
+      url: imageUrl,
+    };
   }
 
   try {
@@ -83,9 +79,9 @@ async function sendToChatroomWebhook(content, author, imageUrl = null) {
       timeout: 10000,
     });
     if (imageUrl) {
-      console.log(`✅ Posted to Discord chatroom: "${author}" (with image)`);
+      console.log(`✅ Posted to Discord chatroom (with image)`);
     } else {
-      console.log(`✅ Posted to Discord chatroom: "${author}"`);
+      console.log(`✅ Posted to Discord chatroom`);
     }
   } catch (err) {
     console.error('Webhook error:', err.message);

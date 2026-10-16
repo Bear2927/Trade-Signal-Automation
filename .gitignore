@@ -37,3 +37,18 @@ build/
 # Config with secrets
 .env
 config/secrets.yaml
+
+# Runtime config: holds live tokens and webhook URLs, and
+# scripts/refresh_discord_token.py rewrites the Discord token into it on every
+# startup and every 12h. Track config.example.yaml instead.
+config/config.yaml
+
+# Written by scripts/setup_token_refresh.sh -- contains the Discord account
+# email and plaintext password. The .env pattern above does not match this name.
+.env.discord
+
+# Timestamped Chrome profile backups. The fb_session/ pattern above does not
+# match these, and a Chrome profile holds live Facebook session cookies.
+fb_session.bak.*/
+fb_don_cristo_session.bak.*/
+sessions/
